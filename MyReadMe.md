@@ -406,8 +406,7 @@ uv run python scripts/sim2sim.py Mjlab-TJ-Right-HandCube-Rotate \
         learning_rate=5e-4, # 3e-4 / 1e-3
 
 
-紫色： 2026-10-23_18-06-33
-	修改：
+	新修改：
 	RESET_JOINT_NOISE_RAD = 0.02
 	OBS_JOINT_POS_NOISE_RAD = 0.02
 	entropy_coef = 0.003

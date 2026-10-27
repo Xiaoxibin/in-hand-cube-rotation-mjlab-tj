@@ -75,3 +75,6 @@ cuda:*/
 mjmodel.xml
 screenshot.png
 wuji.odt
+uv.lock.bak
+# wandb offline runs
+offline-run-*/
