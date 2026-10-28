@@ -382,9 +382,12 @@ uv run python scripts/play.py Mjlab-TJ-Right-HandCube-Rotate \
 uv run python scripts/play.py Mjlab-TJ-Right-HandCube-Rotate --checkpoint-file logs/rsl_rl/tj_right_hand_cube_rotate/2026-10-21_15-58-28/model_19700.pt --num-envs 1
 	修改 ：rl_cfg.py超参数
 	entropy_coef=0.0005,      # was 0.003
-	learning_rate=3e-4,       # was 1e-3
+	learning_rate=3e-4 / adaptive,       # was 1e-3
 	schedule="adaptive",      # 保持 adaptive
 	desired_kl=0.02,          # was 0.01
+	seed=1,
+	num_mini_batches=4,
+	
 
 play 视频录制：
 uv run python scripts/play.py Mjlab-TJ-Right-HandCube-Rotate   --checkpoint-file logs/rsl_rl/tj_right_hand_cube_rotate/2026-10-21_15-58-28/model_19700.pt   --num-envs 1 --video True   --video-length 1200 --video-fps 30   --video-height 720 --video-width 1280

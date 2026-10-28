@@ -23,11 +23,15 @@ CUBE_SPAWN_POS = (-0.006, 0.032, 0.08)
 GRASP_CACHE_FILE = ("tasks/hand_cube/cache/tj_right_grasp_cache_31_filtered.npz")
 
 # Robustness knobs (radians). See _apply_tj_robustness_tuning for the rationale.
-# Reset-time joint perturbation: roughly the observed sim2sim-vs-training engine
-# gap, comfortably inside the grasp-cache stability basin.
-RESET_JOINT_NOISE_RAD = 0.02
-# Proprioception noise: shared config uses 0.01; widened for the same reason.
-OBS_JOINT_POS_NOISE_RAD = 0.02
+# 0.02(10-23 轮) -> 0.0(10-27 轮):+/-0.02 rad 的初始扰动把 fingertip_found_max
+# 从 0.97 打到 0.79,策略退化成"少接触轻推"或"抓紧推不动",rotate_finite_diff
+# 掉到蓝轮的 1/3~1/6。先回到蓝轮的确定初始姿态,把好策略学出来;策略稳定后
+# 再按 0 -> 0.005 -> 0.01 -> 0.02 课程式加回(见 _apply_tj_robustness_tuning)。
+RESET_JOINT_NOISE_RAD = 0.0
+# Proprioception noise: shared config uses 0.01. 0.02(10-23) -> 0.01(10-27):
+# 回到共享配置值(= 蓝轮实际值),而不是 0——play 模式关闭 corruption,这里
+# 写 0 会和 play/sim2sim 的观测分布产生偏差;等初始扰动课程通过后再放宽。
+OBS_JOINT_POS_NOISE_RAD = 0.01
 # =============================================================================
 # Environment configuration
 # =============================================================================
@@ -258,14 +262,18 @@ def _apply_tj_reward_tuning(cfg: ManagerBasedRlEnvCfg) -> None:
     #   drift_rate_weight=4.0:0.1 m/s 的滑移 = -0.4/步,与满速旋转收入
     #   (~0.44/步)同量级,而 0.2 m/s 滑移 = -0.8/步,严格劣于"老实转"。
     # 与累计距离惩罚互补:前者管"滑得多快",后者管"最终漂到哪"。
-    cfg.rewards["cube_drift_rate_penalty"] = RewardTermCfg(
-        func=hand_cube_mdp.object_linvel_l1,
-        weight=-4.0,
-        params={
-            "object_name": "cube",
-            "dead_zone": 0.02,
-        },
-    )
+    #
+    # 10-27 撤回:10-26 两 seed 轮和初始扰动同时加入,rotate_finite_diff 只有
+    # 蓝轮的 1/3~1/6,无法归因。先回到纯蓝奖励面做对照;要重新启用时解除注释
+    # 并只改这一项。
+    # cfg.rewards["cube_drift_rate_penalty"] = RewardTermCfg(
+    #     func=hand_cube_mdp.object_linvel_l1,
+    #     weight=-4.0,
+    #     params={
+    #         "object_name": "cube",
+    #         "dead_zone": 0.02,
+    #     },
+    # )
 
 
 def _apply_tj_robustness_tuning(cfg: ManagerBasedRlEnvCfg) -> None:
@@ -299,10 +307,11 @@ def _apply_tj_robustness_tuning(cfg: ManagerBasedRlEnvCfg) -> None:
     the current hand-written XML estimates would be worse than not doing it.
     """
     joint_noise = RESET_JOINT_NOISE_RAD
-    cfg.events["reset_robot_joints"].params["position_range"] = (
-        -joint_noise,
-        joint_noise,
-    )
+    if joint_noise > 0.0:
+        cfg.events["reset_robot_joints"].params["position_range"] = (
+            -joint_noise,
+            joint_noise,
+        )
 
     cfg.observations["actor"].terms["joint_pos"].noise = Unoise(
         n_min=-OBS_JOINT_POS_NOISE_RAD,
